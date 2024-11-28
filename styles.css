@@ -1,0 +1,106 @@
+/* Estilização geral */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f4f4f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: #333;
+}
+
+form {
+    background: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+}
+
+/* Títulos e labels */
+form label {
+    font-weight: bold;
+    margin-top: 10px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+form input,
+form textarea,
+form button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+form input:focus,
+form textarea:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
+}
+
+textarea {
+    resize: none;
+    height: 80px;
+}
+
+/* Botões */
+form button {
+    background: #007bff;
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+form button:hover {
+    background: #0056b3;
+}
+
+/* Estilo do canvas */
+canvas {
+    border: 2px dashed #007bff;
+    border-radius: 4px;
+    background: #f9f9f9;
+    margin-bottom: 10px;
+    cursor: crosshair;
+}
+
+/* Botão de limpar assinatura */
+#clear-signature {
+    background: #dc3545;
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 4px;
+    transition: background 0.3s;
+    margin-bottom: 15px;
+}
+
+#clear-signature:hover {
+    background: #a71d2a;
+}
+
+/* Resposividade */
+@media (max-width: 600px) {
+    form {
+        padding: 15px;
+    }
+
+    form button,
+    #clear-signature {
+        padding: 8px;
+        font-size: 14px;
+    }
+}

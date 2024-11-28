@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerar PDF com Assinatura</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <form id="donation-form">
+        <label for="name">Nome:</label>
+        <input type="text" id="name" name="name" required><br>
+
+        <label for="amount">Valor da Doação:</label>
+        <input type="number" id="amount" name="amount" required><br>
+
+        <label for="description">Descrição:</label>
+        <textarea id="description" name="description" required></textarea><br>
+
+        <label for="institute">Instituto Destinado:</label>
+        <input type="text" id="institute" name="institute" required><br>
+
+        <canvas id="signature-pad" width="500" height="200" style="border: 1px solid black;"></canvas>
+        <button type="button" id="clear-signature">Limpar Assinatura</button><br>
+
+        <button type="submit">Gerar PDF</button>
+    </form>
+
+    <script>
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    // Funções de desenho na assinatura
+    canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (!drawing) return;
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        drawing = false;
+        ctx.closePath();
+    });
+
+    document.getElementById('clear-signature').addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // Submissão do formulário
+    document.getElementById('donation-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const signature = canvas.toDataURL(); // Captura a assinatura como base64
+
+        const data = {
+            name: formData.get('name'),
+            amount: formData.get('amount'),
+            description: formData.get('description'),
+            institute: formData.get('institute'),
+            signature,
+        };
+
+        // Envia os dados para o servidor
+        try {
+            const response = await fetch('http://localhost:3000/generate-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao gerar o PDF');
+            }
+
+            // Baixa o PDF gerado
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'recibo_doacao.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Não foi possível gerar o PDF.');
+        }
+    });
+    </script>
+</body>
+</html>
