@@ -31,8 +31,8 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'pages', 'register.html'));
 });
 
+// Register route (already implemented)
 app.post('/register', async (req, res) => {
-    // Access the correct keys from req.body
     const { name, email, password, 'confirm-password': confirmPassword } = req.body;
 
     // Validation: Check if all fields are provided
@@ -69,7 +69,6 @@ app.post('/register', async (req, res) => {
         res.status(201).send('Conta criada com sucesso!');
     } catch (error) {
         console.error('Erro ao criar conta:', error);
-        // Send more detailed error message
         if (error.code === '23505') { // Unique constraint violation (duplicate email)
             res.status(400).send('E-mail já está em uso.');
         } else {
@@ -78,6 +77,38 @@ app.post('/register', async (req, res) => {
     }
 });
 
+// Login route
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    // Validation: Check if both email and password are provided
+    if (!email || !password) {
+        return res.status(400).send('E-mail e senha são obrigatórios.');
+    }
+
+    try {
+        // Check if user exists by email
+        const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (userCheck.rows.length === 0) {
+            return res.status(400).send('E-mail ou senha incorretos.');
+        }
+
+        const user = userCheck.rows[0];
+
+        // Compare the password with the hashed password in the database
+        const passwordMatch = await bcrypt.compare(password, user.password);
+
+        if (!passwordMatch) {
+            return res.status(400).send('E-mail ou senha incorretos.');
+        }
+
+        // If login is successful, you can send a success message or set up a session
+        res.status(200).send('Login bem-sucedido!');
+    } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        res.status(500).send('Erro interno do servidor.');
+    }
+});
 
 // Error handling for missing .env configuration
 if (!process.env.PORT) {
