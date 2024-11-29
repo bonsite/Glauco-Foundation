@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const fs = require('fs'); // Make sure to require the fs module at the top
-
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
@@ -237,55 +236,42 @@ app.post('/generate-pdf', async (req, res) => {
             INSERT INTO pedidos (pdf_id, user_email)
             VALUES ($1, $2)
         `;
-        await pool.query(query, [randomId.toString(), userEmail]);
+        await pool.query(query, [randomId, userEmail]);
 
-        // Send the saved PDF file as a response
-        res.status(200).send(`PDF generated and saved with ID: ${randomId}.`);
+        // Send the file path as the response
+        res.status(200).json({ filePath: filePath, pdfId: randomId });
     } catch (error) {
-        console.error('Erro ao gerar o PDF:', error.message);
+        console.error('Erro ao gerar o PDF:', error);
         res.status(500).send('Erro ao gerar o PDF.');
     }
 });
 
-
-
-// Utility function to wrap text
-function wrapText(text, maxWidth, font, fontSize, pdfDoc) {
-    const wrappedLines = [];
+// Function to wrap text to fit within the maximum line width
+function wrapText(text, maxLineWidth, font, fontSize, pdfDoc) {
     const words = text.split(' ');
+    const lines = [];
     let currentLine = '';
 
-    for (const word of words) {
-        const lineWidth = font.widthOfTextAtSize(currentLine + ' ' + word, fontSize);
-        if (lineWidth > maxWidth) {
-            wrappedLines.push(currentLine.trim());
+    words.forEach((word) => {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+        if (testWidth > maxLineWidth) {
+            lines.push(currentLine);
             currentLine = word;
         } else {
-            currentLine += ' ' + word;
+            currentLine = testLine;
         }
-    }
+    });
 
     if (currentLine) {
-        wrappedLines.push(currentLine.trim());
+        lines.push(currentLine);
     }
 
-    return wrappedLines;
+    return lines;
 }
 
-
-// Route to handle /criar-pedido
-app.get('/criar-pedido', (req, res) => {
-    res.sendFile(path.join(__dirname, 'pages', 'criar-pedido.html'));
-});
-
-
-
-
-// Error handling for missing .env configuration
-if (!process.env.PORT) {
-    console.warn('Warning: PORT is not defined in .env. Using default port 4200.');
-}
-
+// Start the server
 app.listen(PORT, () => {
-    console.log(`Listening to http://localhost:${PORT}`);
+    console.log(`Servidor rodando na porta ${PORT}`);
 });
