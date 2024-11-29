@@ -102,15 +102,18 @@ app.get('/dashboard', (req, res) => {
     });
 });
 
-// Route to generate PDF (from your friend's code)
+// Route to generate PDF (updated code)
 app.post('/generate-pdf', async (req, res) => {
     try {
         const { name, amount, description, institute, signature } = req.body;
 
+        // Format the amount as BRL currency (e.g., R$ 100,00)
+        const formattedAmount = parseFloat(amount).toFixed(2).replace('.', ',');
+
         // Create a new PDF document
         const pdfDoc = await PDFDocument.create();
 
-        // Load the representative's signature (fixed)
+        // Load the representative's signature
         const repSignatureBytes = fs.readFileSync('glauboss.png'); // Update the path if necessary
         const repSignatureImage = await pdfDoc.embedPng(repSignatureBytes);
 
@@ -118,80 +121,154 @@ app.post('/generate-pdf', async (req, res) => {
         const page = pdfDoc.addPage([595, 842]); // A4 size
         const { width, height } = page.getSize();
 
-        // Set a default font
+        // Set fonts
         const MYfont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const MYfontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-        // --- Top section: Description, Institute, and Value ---
-        const infoYStart = height - 50; // Start position near the top
+        // --- Title Section ---
+        const titleY = height - 50; // Position for the title
+        page.drawText('Glauco Foundation', {
+            x: width / 2 - 80,
+            y: titleY,
+            size: 14,
+            font: MYfontBold,
+        });
+        page.drawText('SOLICITAÇÃO DE DOAÇÃO', {
+            x: width / 2 - 95,
+            y: titleY - 20,
+            size: 12,
+            font: MYfontBold,
+        });
+
+        // Add extra space between the title and the description
+        const infoYStart = titleY - 70;
         const lineSpacing = 20;
+
+        // --- Description Section ---
+        page.setFont(MYfontBold);
+        page.drawText('Descrição:', { x: 50, y: infoYStart, size: 12 });
         page.setFont(MYfont);
-        page.drawText('Descrição: ' + description, { x: 50, y: infoYStart, size: 12, font: MYfont });
-        page.drawText('Instituto: ' + institute, { x: 50, y: infoYStart - lineSpacing, size: 12, font: MYfont });
-        page.drawText('Valor: R$ ' + amount, { x: 50, y: infoYStart - lineSpacing * 2, size: 12, font: MYfont });
 
-        // --- Bottom section: Signatures and names ---
-        const boxWidth = 200; // Width of the signature boxes
-        const boxHeight = 100; // Height of the signature boxes
-        const boxY = 150; // Fixed vertical position for the boxes
+        // Wrap long description text
+        const maxLineWidth = width - 100;
+        const wrappedDescription = wrapText(description, maxLineWidth, MYfont, 12, pdfDoc);
+        wrappedDescription.forEach((line, index) => {
+            page.drawText(line, { x: 150, y: infoYStart - index * lineSpacing, size: 12 });
+        });
 
-        // Applicant
-        const solicX = 50; // Horizontal position for the applicant
+        // Draw institute and value below the description
+        const instituteY = infoYStart - wrappedDescription.length * lineSpacing - lineSpacing;
+        page.setFont(MYfontBold);
+        page.drawText('Instituto:', { x: 50, y: instituteY, size: 12 });
+        page.setFont(MYfont);
+        page.drawText(institute, { x: 150, y: instituteY, size: 12 });
+
+        const valueY = instituteY - lineSpacing;
+        page.setFont(MYfontBold);
+        page.drawText('Valor:', { x: 50, y: valueY, size: 12 });
+        page.setFont(MYfont);
+        page.drawText(`R$ ${formattedAmount}`, { x: 150, y: valueY, size: 12 });
+
+        // --- Bottom Section: Signatures ---
+        const boxWidth = 200;
+        const boxHeight = 100;
+        const boxY = 150;
+
+        // Left (Applicant) Box
+        const leftBoxX = width / 4 - boxWidth / 2;
         page.drawRectangle({
-            x: solicX,
+            x: leftBoxX,
             y: boxY,
             width: boxWidth,
             height: boxHeight,
             borderColor: rgb(0, 0, 0),
             borderWidth: 1,
         });
-        page.drawText('Solicitante', { x: solicX + 10, y: boxY + boxHeight - 15, size: 10, font: MYfont });
-        page.drawText(name, { x: solicX + 10, y: boxY - 15, size: 10, font: MYfont });
+        page.setFont(MYfontBold);
+        page.drawText('Solicitante', { x: leftBoxX + boxWidth / 2 - 30, y: boxY + boxHeight - 15, size: 10 });
+
+        // Applicant's name centered below the box
+        page.setFont(MYfont);
+        const nameWidth = MYfont.widthOfTextAtSize(name, 10);
+        page.drawText(name, { x: leftBoxX + boxWidth / 2 - nameWidth / 2, y: boxY - 15, size: 10 });
 
         // Applicant's signature
-        const solicSignatureImageBytes = signature.split(',')[1]; // Remove the "data:image/png;base64," prefix
+        const solicSignatureImageBytes = signature.split(',')[1];
         const solicSignatureImage = await pdfDoc.embedPng(Buffer.from(solicSignatureImageBytes, 'base64'));
 
-        // Scale the applicant's signature to 35% of its original size
         const solicSignatureDims = solicSignatureImage.scale(0.35);
-
         page.drawImage(solicSignatureImage, {
-            x: solicX + 10,
+            x: leftBoxX + boxWidth / 2 - solicSignatureDims.width / 2,
             y: boxY + 10,
             width: solicSignatureDims.width,
             height: solicSignatureDims.height,
         });
 
-        // Representative
-        const repX = solicX + boxWidth + 50; // Horizontal position for the representative
+        // Right (Empty) Box
+        const rightBoxX = (3 * width) / 4 - boxWidth / 2;
         page.drawRectangle({
-            x: repX,
+            x: rightBoxX,
             y: boxY,
             width: boxWidth,
             height: boxHeight,
             borderColor: rgb(0, 0, 0),
             borderWidth: 1,
         });
-        page.drawText('Representante', { x: repX + 10, y: boxY + boxHeight - 15, size: 10, font: MYfont });
-        page.drawText('João', { x: repX + 10, y: boxY - 15, size: 10, font: MYfont });
+        page.setFont(MYfontBold);
+        page.drawText('Representante', { x: rightBoxX + boxWidth / 2 - 50, y: boxY + boxHeight - 15, size: 10 });
 
-        // Representative's signature
-        const repSignatureDims = repSignatureImage.scale(0.35); // Scale the representative's signature to 35%
-        page.drawImage(repSignatureImage, {
-            x: repX + 10,
-            y: boxY + 10,
-            width: repSignatureDims.width,
-            height: repSignatureDims.height,
-        });
-
-        // Finalize and send the PDF
+        // Finalize the PDF document
         const pdfBytes = await pdfDoc.save();
-        res.setHeader('Content-Type', 'application/pdf');
-        res.send(Buffer.from(pdfBytes)); // Send the PDF as a response
+
+        // Generate a random 7-digit ID
+        const randomId = Math.floor(1000000 + Math.random() * 9000000);
+
+        // Define file path to save the PDF
+        const filePath = path.join(__dirname, 'pedidos', `${randomId}.pdf`);
+
+        // Save the PDF to the pedidos directory
+        fs.writeFileSync(filePath, Buffer.from(pdfBytes));
+
+        // Send the saved PDF file as a response
+        res.status(200).send(`PDF generated and saved with ID: ${randomId}.`);
     } catch (error) {
         console.error('Erro ao gerar o PDF:', error.message);
         res.status(500).send('Erro ao gerar o PDF.');
     }
 });
+
+
+// Utility function to wrap text
+function wrapText(text, maxWidth, font, fontSize, pdfDoc) {
+    const wrappedLines = [];
+    const words = text.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+        const lineWidth = font.widthOfTextAtSize(currentLine + ' ' + word, fontSize);
+        if (lineWidth > maxWidth) {
+            wrappedLines.push(currentLine.trim());
+            currentLine = word;
+        } else {
+            currentLine += ' ' + word;
+        }
+    }
+
+    if (currentLine) {
+        wrappedLines.push(currentLine.trim());
+    }
+
+    return wrappedLines;
+}
+
+
+// Route to handle /criar-pedido
+app.get('/criar-pedido', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'criar-pedido.html'));
+});
+
+
+
 
 // Error handling for missing .env configuration
 if (!process.env.PORT) {
