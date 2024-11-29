@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs'); // Make sure to require the fs module at the top
+
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
@@ -80,17 +82,20 @@ app.get('/dashboard', (req, res) => {
 
     const userName = req.session.user.name;
 
-    // Save the user's name to localStorage to be accessed in the client-side script
-    res.sendFile(path.join(__dirname, 'pages', 'dashboard.html'), () => {
-        res.write(`
-            <script>
-                localStorage.setItem("userName", "${userName}");
-            </script>
-        `);
-        res.end();
+    // Read the dashboard.html file
+    fs.readFile(path.join(__dirname, 'pages', 'dashboard.html'), 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading dashboard.html:', err);
+            return res.status(500).send('Erro interno do servidor.');
+        }
+
+        // Replace the placeholder with the actual username
+        const updatedHtml = data.replace('{{userName}}', userName);
+
+        // Send the updated HTML file as the response
+        res.send(updatedHtml);
     });
 });
-
 
 // Error handling for missing .env configuration
 if (!process.env.PORT) {
