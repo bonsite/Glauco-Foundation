@@ -1,9 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fs = require('fs');
 const cors = require('cors');
 
+const repSignatureBytes = fs.readFileSync('glauboss.png');
 
 
 const app = express();
@@ -16,47 +17,95 @@ app.use(bodyParser.json({ limit: '10mb' })); // Aceita JSON grande (para a assin
 
 // Rota para gerar o PDF
 app.post('/generate-pdf', async (req, res) => {
-    const { name, amount, description, institute, signature } = req.body;
-
     try {
-        // Cria um novo documento PDF
+        const { name, amount, description, institute, signature } = req.body;
+
+        // Crie um novo documento PDF
         const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([600, 400]);
 
-        // Adiciona texto ao PDF
-        page.drawText(`Recibo de Doação`, { x: 50, y: 350, size: 18, color: rgb(0, 0, 0) });
-        page.drawText(`Nome: ${name}`, { x: 50, y: 320, size: 12 });
-        page.drawText(`Valor da Doação: R$ ${amount}`, { x: 50, y: 300, size: 12 });
-        page.drawText(`Descrição: ${description}`, { x: 50, y: 280, size: 12 });
-        page.drawText(`Instituto: ${institute}`, { x: 50, y: 260, size: 12 });
+        // Carregue a assinatura do representante (fixa)
+        const repSignatureBytes = fs.readFileSync('glauboss.png'); // Substitua pelo caminho correto da assinatura do representante
+        const repSignatureImage = await pdfDoc.embedPng(repSignatureBytes);
 
-        // Adiciona a assinatura ao PDF
-        if (signature) {
-            const signatureImage = signature.split(',')[1]; // Remove o prefixo 'data:image/png;base64,'
-            const signatureBytes = Buffer.from(signatureImage, 'base64');
-            const embeddedSignature = await pdfDoc.embedPng(signatureBytes);
+        // Adicione uma página ao documento
+        const page = pdfDoc.addPage([595, 842]); // Tamanho A4 (595 x 842 pontos)
+        const { width, height } = page.getSize();
 
-            page.drawImage(embeddedSignature, {
-                x: 50,
-                y: 100,
-                width: 200,
-                height: 80,
-            });
-        }
+        // Defina uma fonte padrão (corrigido)
+        const MYfont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+         // Corrigido para embedStandardFont
 
-        // Salva o PDF em bytes
+        // --- Parte superior: Descrição, Instituto e Valor ---
+        const infoYStart = height - 50; // Posição inicial no topo
+        const lineSpacing = 20;
+        page.setFont(MYfont)
+        page.drawText('Descrição: ' + description, { x: 50, y: infoYStart, size: 12, MYfont });
+        page.drawText('Instituto: ' + institute, { x: 50, y: infoYStart - lineSpacing, size: 12, MYfont });
+        page.drawText('Valor: R$ ' + amount, { x: 50, y: infoYStart - lineSpacing * 2, size: 12, MYfont });
+
+        // --- Parte inferior: Assinaturas e nomes ---
+        const boxWidth = 200; // Largura dos quadros de assinaturas
+        const boxHeight = 100; // Altura dos quadros de assinaturas
+        const boxY = 150; // Posição vertical fixa para os quadros
+
+        // Solicitante
+        const solicX = 50; // Posição horizontal do solicitante
+        page.drawRectangle({
+            x: solicX,
+            y: boxY,
+            width: boxWidth,
+            height: boxHeight,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1,
+        });
+        page.drawText('Solicitante', { x: solicX + 10, y: boxY + boxHeight - 15, size: 10, MYfont });
+        page.drawText(name, { x: solicX + 10, y: boxY - 15, size: 10, MYfont });
+
+        // Assinatura do solicitante
+        const solicSignatureImageBytes = signature.split(',')[1]; // Retira o prefixo "data:image/png;base64,"
+        const solicSignatureImage = await pdfDoc.embedPng(Buffer.from(solicSignatureImageBytes, 'base64'));
+        const solicSignatureDims = solicSignatureImage.scale(0.5);
+
+        page.drawImage(solicSignatureImage, {
+            x: solicX + 10,
+            y: boxY + 10,
+            width: solicSignatureDims.width,
+            height: solicSignatureDims.height,
+        });
+
+        // Representante
+        const repX = solicX + boxWidth + 50; // Posição horizontal do representante
+        page.drawRectangle({
+            x: repX,
+            y: boxY,
+            width: boxWidth,
+            height: boxHeight,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1,
+        });
+        page.drawText('Representante', { x: repX + 10, y: boxY + boxHeight - 15, size: 10, MYfont });
+        page.drawText('João', { x: repX + 10, y: boxY - 15, size: 10, MYfont });
+
+        // Assinatura do representante
+        const repSignatureDims = repSignatureImage.scale(0.5);
+        page.drawImage(repSignatureImage, {
+            x: repX + 10,
+            y: boxY + 10,
+            width: repSignatureDims.width,
+            height: repSignatureDims.height,
+        });
+
+        // Finalize e envie o PDF
         const pdfBytes = await pdfDoc.save();
-
-        // Envia o PDF como resposta
         res.setHeader('Content-Type', 'application/pdf');
-        res.send(Buffer.from(pdfBytes));
+        res.send(Buffer.from(pdfBytes)); // Envia o PDF como resposta
     } catch (error) {
-        console.error('Erro ao gerar o PDF:', error);
+        console.error('Erro ao gerar o PDF:', error.message);
         res.status(500).send('Erro ao gerar o PDF.');
     }
 });
 
-// Inicia o servidor
+// Inicie o servidor
 app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`Servidor rodando na porta http://localhost:${PORT}`);
 });
