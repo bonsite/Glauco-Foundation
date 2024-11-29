@@ -7,6 +7,9 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 const session = require('express-session'); // Session middleware
+const bodyParser = require('body-parser'); // Added from your friend's code
+const cors = require('cors'); // Added from your friend's code
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib'); // Added from your friend's code
 
 const app = express();
 const PORT = process.env.PORT || 4200;
@@ -22,6 +25,8 @@ const pool = new Pool({
 // Middleware to parse form data
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'pages')));
+app.use(cors()); // Added from your friend's code
+app.use(bodyParser.json({ limit: '10mb' })); // Added from your friend's code
 
 // Session setup
 app.use(session({
@@ -95,6 +100,97 @@ app.get('/dashboard', (req, res) => {
         // Send the updated HTML file as the response
         res.send(updatedHtml);
     });
+});
+
+// Route to generate PDF (from your friend's code)
+app.post('/generate-pdf', async (req, res) => {
+    try {
+        const { name, amount, description, institute, signature } = req.body;
+
+        // Create a new PDF document
+        const pdfDoc = await PDFDocument.create();
+
+        // Load the representative's signature (fixed)
+        const repSignatureBytes = fs.readFileSync('glauboss.png'); // Update the path if necessary
+        const repSignatureImage = await pdfDoc.embedPng(repSignatureBytes);
+
+        // Add a page to the document
+        const page = pdfDoc.addPage([595, 842]); // A4 size
+        const { width, height } = page.getSize();
+
+        // Set a default font
+        const MYfont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        // --- Top section: Description, Institute, and Value ---
+        const infoYStart = height - 50; // Start position near the top
+        const lineSpacing = 20;
+        page.setFont(MYfont);
+        page.drawText('Descrição: ' + description, { x: 50, y: infoYStart, size: 12, font: MYfont });
+        page.drawText('Instituto: ' + institute, { x: 50, y: infoYStart - lineSpacing, size: 12, font: MYfont });
+        page.drawText('Valor: R$ ' + amount, { x: 50, y: infoYStart - lineSpacing * 2, size: 12, font: MYfont });
+
+        // --- Bottom section: Signatures and names ---
+        const boxWidth = 200; // Width of the signature boxes
+        const boxHeight = 100; // Height of the signature boxes
+        const boxY = 150; // Fixed vertical position for the boxes
+
+        // Applicant
+        const solicX = 50; // Horizontal position for the applicant
+        page.drawRectangle({
+            x: solicX,
+            y: boxY,
+            width: boxWidth,
+            height: boxHeight,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1,
+        });
+        page.drawText('Solicitante', { x: solicX + 10, y: boxY + boxHeight - 15, size: 10, font: MYfont });
+        page.drawText(name, { x: solicX + 10, y: boxY - 15, size: 10, font: MYfont });
+
+        // Applicant's signature
+        const solicSignatureImageBytes = signature.split(',')[1]; // Remove the "data:image/png;base64," prefix
+        const solicSignatureImage = await pdfDoc.embedPng(Buffer.from(solicSignatureImageBytes, 'base64'));
+
+        // Scale the applicant's signature to 35% of its original size
+        const solicSignatureDims = solicSignatureImage.scale(0.35);
+
+        page.drawImage(solicSignatureImage, {
+            x: solicX + 10,
+            y: boxY + 10,
+            width: solicSignatureDims.width,
+            height: solicSignatureDims.height,
+        });
+
+        // Representative
+        const repX = solicX + boxWidth + 50; // Horizontal position for the representative
+        page.drawRectangle({
+            x: repX,
+            y: boxY,
+            width: boxWidth,
+            height: boxHeight,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1,
+        });
+        page.drawText('Representante', { x: repX + 10, y: boxY + boxHeight - 15, size: 10, font: MYfont });
+        page.drawText('João', { x: repX + 10, y: boxY - 15, size: 10, font: MYfont });
+
+        // Representative's signature
+        const repSignatureDims = repSignatureImage.scale(0.35); // Scale the representative's signature to 35%
+        page.drawImage(repSignatureImage, {
+            x: repX + 10,
+            y: boxY + 10,
+            width: repSignatureDims.width,
+            height: repSignatureDims.height,
+        });
+
+        // Finalize and send the PDF
+        const pdfBytes = await pdfDoc.save();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(Buffer.from(pdfBytes)); // Send the PDF as a response
+    } catch (error) {
+        console.error('Erro ao gerar o PDF:', error.message);
+        res.status(500).send('Erro ao gerar o PDF.');
+    }
 });
 
 // Error handling for missing .env configuration
