@@ -102,7 +102,7 @@ app.get('/dashboard', (req, res) => {
     });
 });
 
-// Route to generate PDF (updated code)
+// Route to generate PDF and save to the database
 app.post('/generate-pdf', async (req, res) => {
     try {
         const { name, amount, description, institute, signature } = req.body;
@@ -220,7 +220,7 @@ app.post('/generate-pdf', async (req, res) => {
         // Finalize the PDF document
         const pdfBytes = await pdfDoc.save();
 
-        // Generate a random 7-digit ID
+        // Generate a random 7-digit ID for the PDF
         const randomId = Math.floor(1000000 + Math.random() * 9000000);
 
         // Define file path to save the PDF
@@ -229,6 +229,16 @@ app.post('/generate-pdf', async (req, res) => {
         // Save the PDF to the pedidos directory
         fs.writeFileSync(filePath, Buffer.from(pdfBytes));
 
+        // Get the logged-in user's email from the session
+        const userEmail = req.session.user.email;
+
+        // Insert PDF details into the 'pedidos' table
+        const query = `
+            INSERT INTO pedidos (pdf_id, user_email)
+            VALUES ($1, $2)
+        `;
+        await pool.query(query, [randomId.toString(), userEmail]);
+
         // Send the saved PDF file as a response
         res.status(200).send(`PDF generated and saved with ID: ${randomId}.`);
     } catch (error) {
@@ -236,6 +246,7 @@ app.post('/generate-pdf', async (req, res) => {
         res.status(500).send('Erro ao gerar o PDF.');
     }
 });
+
 
 
 // Utility function to wrap text
