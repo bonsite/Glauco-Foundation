@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundação Glauco - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            background-color: #007acc; /* Use blue similar to login page */
+            color: white;
+            padding: 10px 20px;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+        .navbar .brand {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .navbar .user {
+            font-size: 18px;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin-top: 60px; /* Space for the navbar */
+            flex-direction: row;
+            gap: 20px;
+        }
+        .option {
+            background-color: #007acc; /* Matching the login blue */
+            color: white;
+            width: 200px;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .option:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        .container .option {
+            width: 250px; /* Slightly wider for balance */
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="brand">Glauco Foundation</div>
+        <div class="user" id="userName"></div>
+    </div>
+    <div class="container">
+        <div class="option" onclick="window.location.href='/criar-pedido'">Criar Pedido de Doação</div>
+        <div class="option" onclick="window.location.href='/verificar-assinatura'">Verificar Assinatura Digital</div>
+        <div class="option" onclick="window.location.href='/meus-pedidos'">Ver Pedidos</div>
+    </div>
+
+    <script>
+        // Populate the user's name dynamically using JavaScript
+        document.getElementById("userName").textContent = localStorage.getItem("userName") || "Usuário";
+    </script>
+</body>
+</html>
