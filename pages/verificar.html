@@ -73,26 +73,27 @@
         });
 
         function verifySignature(pdfId) {
-            fetch(`/verify-signature`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ pdfId }),
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message) {
-                        alert(`Sucesso: ${data.message}`);
-                    } else {
-                        alert(`Erro: ${data.error}`);
-                    }
-                })
-                .catch(error => {
-                    console.error("Erro ao verificar a assinatura:", error);
-                    alert("Erro ao verificar a assinatura. Tente novamente.");
-                });
-        }
+    fetch(`/verify-signature`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pdfId }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.message) {
+                alert(`Sucesso: ${data.message}`);
+            } else if (data.error) {
+                alert(`Erro: ${data.error}`);
+            }
+        })
+        .catch((error) => {
+            console.error("Erro ao verificar a assinatura:", error);
+            alert("Erro ao verificar a assinatura. Tente novamente.");
+        });
+}
+
     </script>
 </body>
 

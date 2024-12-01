@@ -327,19 +327,25 @@ app.post('/sign-pdf', async (req, res) => {
         // Load the PDF and embed the signature
         const pdfDoc = await PDFDocument.load(pdfBytes);
 
-        const signatureText = `Signed by: Your Name\nSignature: ${signature}\nDate: ${new Date().toISOString()}`;
+        const signatureText = `Signature: ${signature}\nDate: ${new Date().toISOString()}`;
         const page = pdfDoc.getPage(0);
 
         page.drawText(signatureText, {
-            x: 50,
-            y: 50, // Position the signature at the bottom-left of the page
-            size: 10,
+            x: 100,
+            y: 100, // Position the signature at the bottom-left of the page
+            size: 3,
             color: rgb(0, 0, 0),
         });
 
         // Save the signed PDF
         const signedPdfBytes = await pdfDoc.save();
         fs.writeFileSync(filePath, signedPdfBytes);
+
+        // Update the database with the generated signature
+        await pool.query(
+            `UPDATE pedidos SET signature = $1 WHERE pdf_id = $2`,
+            [signature, pdfId]
+        );
 
         res.status(200).json({ message: 'PDF assinado com sucesso', pdfId, signature });
     } catch (error) {
@@ -348,21 +354,33 @@ app.post('/sign-pdf', async (req, res) => {
     }
 });
 
-app.post('/verify-signature', (req, res) => {
+
+app.post('/verify-signature', async (req, res) => {
     try {
         const { pdfId } = req.body;
 
+        if (!pdfId) {
+            return res.status(400).json({ error: "PDF ID não fornecido." });
+        }
+
+        // Fetch the signature from the database (stored when signing the PDF)
+        const pdfQuery = await pool.query('SELECT signature FROM pedidos WHERE pdf_id = $1', [pdfId]);
+        if (pdfQuery.rows.length === 0) {
+            return res.status(404).json({ error: "PDF não encontrado." });
+        }
+
+        const { signature } = pdfQuery.rows[0];
+
+        // Load the existing PDF from the filesystem
         const filePath = path.join(__dirname, 'pedidos', `${pdfId}.pdf`);
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: "PDF não encontrado." });
         }
+
         const pdfBytes = fs.readFileSync(filePath);
 
         // Recreate the hash
         const pdfHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
-
-        // Extract the signature (if stored separately)
-        const { signature } = req.body; // Or load it from your metadata system
 
         // Verify the signature
         const verify = crypto.createVerify('SHA256');
@@ -370,15 +388,16 @@ app.post('/verify-signature', (req, res) => {
         const isValid = verify.verify(publicKey, signature, 'hex');
 
         if (isValid) {
-            res.status(200).json({ message: 'Assinatura verificada com sucesso!' });
+            return res.status(200).json({ message: "Assinatura verificada com sucesso!" });
         } else {
-            res.status(400).json({ error: 'Assinatura inválida.' });
+            return res.status(400).json({ error: "Assinatura inválida." });
         }
     } catch (error) {
-        console.error('Erro ao verificar a assinatura:', error);
-        res.status(500).send('Erro ao verificar a assinatura.');
+        console.error("Erro ao verificar a assinatura:", error);
+        res.status(500).json({ error: "Erro ao verificar a assinatura." });
     }
 });
+
 
   
 
