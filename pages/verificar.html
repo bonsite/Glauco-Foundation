@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assinar PDFs</title>
+    <title>Verificar Assinaturas</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div class="main">
-        <h1>Seus PDFs para Assinatura</h1>
+        <h1>Verificar Assinaturas de PDFs</h1>
         <div id="pdf-list">
             <p>Carregando seus PDFs...</p>
         </div>
@@ -35,7 +35,7 @@
                     pdfListDiv.innerHTML = "";
 
                     if (data.length === 0) {
-                        pdfListDiv.innerHTML = "<p>Nenhum PDF encontrado para assinatura.</p>";
+                        pdfListDiv.innerHTML = "<p>Nenhum PDF encontrado para verificação.</p>";
                         return;
                     }
 
@@ -48,14 +48,14 @@
                         pdfLink.target = "_blank";
                         pdfLink.textContent = `PDF ID: ${pdf.pdf_id}`;
 
-                        const signButton = document.createElement("button");
-                        signButton.textContent = "Assinar";
-                        signButton.addEventListener("click", () => {
-                            signPdf(pdf.pdf_id);
+                        const verifyButton = document.createElement("button");
+                        verifyButton.textContent = "Verificar Assinatura";
+                        verifyButton.addEventListener("click", () => {
+                            verifySignature(pdf.pdf_id);
                         });
 
                         pdfDiv.appendChild(pdfLink);
-                        pdfDiv.appendChild(signButton);
+                        pdfDiv.appendChild(verifyButton);
                         pdfListDiv.appendChild(pdfDiv);
                     });
                 })
@@ -72,66 +72,27 @@
             });
         });
 
-        function signPdf(pdfId) {
-            const userEmail = localStorage.getItem("userEmail");
-            if (!userEmail) {
-                alert("Você precisa estar logado para assinar o PDF.");
-                return;
-            }
-
-            // Generate signature on the client-side
-            fetch(`/generate-signature?pdf_id=${pdfId}&email=${encodeURIComponent(userEmail)}`)
+        function verifySignature(pdfId) {
+            fetch(`/verify-signature`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ pdfId }),
+            })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.signature) {
-                        // Send the signed PDF to the server
-                        sendSignedPdf(pdfId, data.signature);
+                    if (data.message) {
+                        alert(`Sucesso: ${data.message}`);
                     } else {
-                        alert("Erro ao gerar a assinatura. Tente novamente.");
+                        alert(`Erro: ${data.error}`);
                     }
                 })
                 .catch(error => {
-                    console.error("Erro ao gerar a assinatura:", error);
-                    alert("Erro ao gerar a assinatura. Tente novamente.");
+                    console.error("Erro ao verificar a assinatura:", error);
+                    alert("Erro ao verificar a assinatura. Tente novamente.");
                 });
         }
-
-        function signPdf(pdfId) {
-    const userEmail = localStorage.getItem("userEmail");
-    if (!userEmail) {
-        alert("Você precisa estar logado para assinar o PDF.");
-        return;
-    }
-
-    // Send the request to the /sign-pdf endpoint
-    fetch(`/sign-pdf`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            pdfId: pdfId,
-        }),
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Erro: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.signature) {
-            alert(`PDF assinado com sucesso! Assinatura: ${data.signature}`);
-        } else {
-            alert("Erro ao assinar o PDF. Tente novamente.");
-        }
-    })
-    .catch(error => {
-        console.error("Erro ao assinar o PDF:", error);
-        alert("Erro ao assinar o PDF. Tente novamente.");
-    });
-}
-
     </script>
 </body>
 

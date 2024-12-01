@@ -10,6 +10,11 @@ const bodyParser = require('body-parser'); // Added from your friend's code
 const cors = require('cors'); // Added from your friend's code
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib'); // Added from your friend's code
 
+
+const crypto = require('crypto');
+const privateKey = fs.readFileSync('private-key.pem', 'utf8');
+const publicKey = fs.readFileSync('public-key.pem', 'utf8');
+
 const app = express();
 const PORT = process.env.PORT || 4200;
 
@@ -298,41 +303,83 @@ app.get('/get-user-pdfs', async (req, res) => {
 
 app.post('/sign-pdf', async (req, res) => {
     try {
-      const { pdfId } = req.body;
-  
-      // Load the existing PDF from the filesystem
-      const filePath = path.join(__dirname, 'pedidos', `${pdfId}.pdf`);
-      const pdfBytes = fs.readFileSync(filePath);
-  
-      // Load the PDF
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-  
-      // Create the hash of the content to sign
-      const pdfHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
-  
-      // Sign the hash with the private key
-      const sign = crypto.createSign('SHA256');
-      sign.update(pdfHash);
-      const signature = sign.sign(privateKey, 'hex'); // Signature in hexadecimal
-  
-      // Add the signature to the PDF metadata
-      pdfDoc.setMetadata({
-        Title: 'Signed PDF',
-        Author: 'Your Name',
-        Signature: signature, // You could also add this signature to a specific field in the PDF
-      });
-  
-      const signedPdfBytes = await pdfDoc.save();
-  
-      // Save the signed PDF back to the filesystem
-      fs.writeFileSync(filePath, signedPdfBytes);
-  
-      res.status(200).json({ message: 'PDF signed successfully', pdfId });
+        const { pdfId } = req.body;
+
+        if (!pdfId) {
+            return res.status(400).json({ error: "PDF ID não fornecido." });
+        }
+
+        // Load the existing PDF from the filesystem
+        const filePath = path.join(__dirname, 'pedidos', `${pdfId}.pdf`);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: "PDF não encontrado." });
+        }
+        const pdfBytes = fs.readFileSync(filePath);
+
+        // Create a hash of the PDF content
+        const pdfHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
+
+        // Sign the hash with the private key
+        const sign = crypto.createSign('SHA256');
+        sign.update(pdfHash);
+        const signature = sign.sign(privateKey, 'hex'); // Hexadecimal signature
+
+        // Load the PDF and embed the signature
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+
+        const signatureText = `Signed by: Your Name\nSignature: ${signature}\nDate: ${new Date().toISOString()}`;
+        const page = pdfDoc.getPage(0);
+
+        page.drawText(signatureText, {
+            x: 50,
+            y: 50, // Position the signature at the bottom-left of the page
+            size: 10,
+            color: rgb(0, 0, 0),
+        });
+
+        // Save the signed PDF
+        const signedPdfBytes = await pdfDoc.save();
+        fs.writeFileSync(filePath, signedPdfBytes);
+
+        res.status(200).json({ message: 'PDF assinado com sucesso', pdfId, signature });
     } catch (error) {
-      console.error('Erro ao assinar o PDF:', error);
-      res.status(500).send('Erro ao assinar o PDF.');
+        console.error('Erro ao assinar o PDF:', error);
+        res.status(500).send('Erro ao assinar o PDF.');
     }
-  });
+});
+
+app.post('/verify-signature', (req, res) => {
+    try {
+        const { pdfId } = req.body;
+
+        const filePath = path.join(__dirname, 'pedidos', `${pdfId}.pdf`);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: "PDF não encontrado." });
+        }
+        const pdfBytes = fs.readFileSync(filePath);
+
+        // Recreate the hash
+        const pdfHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
+
+        // Extract the signature (if stored separately)
+        const { signature } = req.body; // Or load it from your metadata system
+
+        // Verify the signature
+        const verify = crypto.createVerify('SHA256');
+        verify.update(pdfHash);
+        const isValid = verify.verify(publicKey, signature, 'hex');
+
+        if (isValid) {
+            res.status(200).json({ message: 'Assinatura verificada com sucesso!' });
+        } else {
+            res.status(400).json({ error: 'Assinatura inválida.' });
+        }
+    } catch (error) {
+        console.error('Erro ao verificar a assinatura:', error);
+        res.status(500).send('Erro ao verificar a assinatura.');
+    }
+});
+
   
 
 
