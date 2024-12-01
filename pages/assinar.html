@@ -42,33 +42,93 @@
                     data.forEach(pdf => {
                         const pdfDiv = document.createElement("div");
                         pdfDiv.classList.add("pdf-item");
-                        pdfDiv.innerHTML = `
-                            <p><strong>ID do PDF:</strong> ${pdf.pdf_id}</p>
-                            <a href="/pedidos/${pdf.pdf_id}.pdf" target="_blank" class="view-link">Visualizar PDF</a>
-                            <button class="sign-button" data-pdf-id="${pdf.pdf_id}">Assinar</button>
-                        `;
-                        pdfListDiv.appendChild(pdfDiv);
-                    });
 
-                    // Add event listeners for signing buttons
-                    document.querySelectorAll(".sign-button").forEach(button => {
-                        button.addEventListener("click", () => {
-                            const pdfId = button.getAttribute("data-pdf-id");
-                            alert(`Funcionalidade de assinatura para o PDF ${pdfId} ainda será implementada.`);
+                        const pdfLink = document.createElement("a");
+                        pdfLink.href = `/pedidos/${pdf.pdf_id}.pdf`;
+                        pdfLink.target = "_blank";
+                        pdfLink.textContent = `PDF ID: ${pdf.pdf_id}`;
+
+                        const signButton = document.createElement("button");
+                        signButton.textContent = "Assinar";
+                        signButton.addEventListener("click", () => {
+                            signPdf(pdf.pdf_id);
                         });
+
+                        pdfDiv.appendChild(pdfLink);
+                        pdfDiv.appendChild(signButton);
+                        pdfListDiv.appendChild(pdfDiv);
                     });
                 })
                 .catch(error => {
-                    console.error("Erro ao carregar PDFs:", error);
-                    document.getElementById("pdf-list").innerHTML = "<p>Erro ao carregar seus PDFs.</p>";
+                    console.error("Erro ao buscar PDFs:", error);
+                    alert("Erro ao carregar PDFs. Tente novamente mais tarde.");
                 });
+
+            // Logout functionality
+            document.getElementById("logout").addEventListener("click", () => {
+                localStorage.removeItem("userEmail");
+                alert("Você saiu com sucesso!");
+                window.location.href = "/";
+            });
         });
 
-        // Logout button functionality
-        document.getElementById("logout").addEventListener("click", () => {
-            localStorage.removeItem("userEmail");
-            window.location.href = "/";
-        });
+        function signPdf(pdfId) {
+            const userEmail = localStorage.getItem("userEmail");
+            if (!userEmail) {
+                alert("Você precisa estar logado para assinar o PDF.");
+                return;
+            }
+
+            // Generate signature on the client-side
+            fetch(`/generate-signature?pdf_id=${pdfId}&email=${encodeURIComponent(userEmail)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.signature) {
+                        // Send the signed PDF to the server
+                        sendSignedPdf(pdfId, data.signature);
+                    } else {
+                        alert("Erro ao gerar a assinatura. Tente novamente.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Erro ao gerar a assinatura:", error);
+                    alert("Erro ao gerar a assinatura. Tente novamente.");
+                });
+        }
+
+        function sendSignedPdf(pdfId, signature) {
+            const userEmail = localStorage.getItem("userEmail");
+
+            if (!userEmail) {
+                alert("Você precisa estar logado para enviar o PDF assinado.");
+                return;
+            }
+
+            // Send the signed PDF to the server
+            fetch(`/submit-signed-pdf`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    pdf_id: pdfId,
+                    email: userEmail,
+                    signature: signature,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("PDF assinado e enviado com sucesso!");
+                } else {
+                    alert("Erro ao enviar o PDF assinado. Tente novamente.");
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao enviar o PDF assinado:", error);
+                alert("Erro ao enviar o PDF assinado. Tente novamente.");
+            });
+        }
     </script>
 </body>
 

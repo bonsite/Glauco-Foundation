@@ -246,6 +246,8 @@ app.post('/generate-pdf', async (req, res) => {
     }
 });
 
+
+
 // Function to wrap text to fit within the maximum line width
 function wrapText(text, maxLineWidth, font, fontSize, pdfDoc) {
     const words = text.split(' ');
@@ -293,6 +295,45 @@ app.get('/get-user-pdfs', async (req, res) => {
         res.status(500).json({ error: "Erro ao buscar PDFs." });
     }
 });
+
+app.post('/sign-pdf', async (req, res) => {
+    try {
+      const { pdfId } = req.body;
+  
+      // Load the existing PDF from the filesystem
+      const filePath = path.join(__dirname, 'pedidos', `${pdfId}.pdf`);
+      const pdfBytes = fs.readFileSync(filePath);
+  
+      // Load the PDF
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+  
+      // Create the hash of the content to sign
+      const pdfHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
+  
+      // Sign the hash with the private key
+      const sign = crypto.createSign('SHA256');
+      sign.update(pdfHash);
+      const signature = sign.sign(privateKey, 'hex'); // Signature in hexadecimal
+  
+      // Add the signature to the PDF metadata
+      pdfDoc.setMetadata({
+        Title: 'Signed PDF',
+        Author: 'Your Name',
+        Signature: signature, // You could also add this signature to a specific field in the PDF
+      });
+  
+      const signedPdfBytes = await pdfDoc.save();
+  
+      // Save the signed PDF back to the filesystem
+      fs.writeFileSync(filePath, signedPdfBytes);
+  
+      res.status(200).json({ message: 'PDF signed successfully', pdfId });
+    } catch (error) {
+      console.error('Erro ao assinar o PDF:', error);
+      res.status(500).send('Erro ao assinar o PDF.');
+    }
+  });
+  
 
 
 // Start the server
