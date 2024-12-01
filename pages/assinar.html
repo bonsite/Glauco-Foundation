@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinar PDFs</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="main">
+        <h1>Seus PDFs para Assinatura</h1>
+        <div id="pdf-list">
+            <p>Carregando seus PDFs...</p>
+        </div>
+        <button id="logout" style="margin-top: 20px;">Sair</button>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const userEmail = localStorage.getItem("userEmail");
+
+            if (!userEmail) {
+                alert("Você não está logado! Redirecionando para a página de login...");
+                window.location.href = "/";
+                return;
+            }
+
+            // Fetch PDFs from the server
+            fetch(`/get-user-pdfs?email=${encodeURIComponent(userEmail)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const pdfListDiv = document.getElementById("pdf-list");
+                    pdfListDiv.innerHTML = "";
+
+                    if (data.length === 0) {
+                        pdfListDiv.innerHTML = "<p>Nenhum PDF encontrado para assinatura.</p>";
+                        return;
+                    }
+
+                    data.forEach(pdf => {
+                        const pdfDiv = document.createElement("div");
+                        pdfDiv.classList.add("pdf-item");
+                        pdfDiv.innerHTML = `
+                            <p><strong>ID do PDF:</strong> ${pdf.pdf_id}</p>
+                            <a href="/pedidos/${pdf.pdf_id}.pdf" target="_blank" class="view-link">Visualizar PDF</a>
+                            <button class="sign-button" data-pdf-id="${pdf.pdf_id}">Assinar</button>
+                        `;
+                        pdfListDiv.appendChild(pdfDiv);
+                    });
+
+                    // Add event listeners for signing buttons
+                    document.querySelectorAll(".sign-button").forEach(button => {
+                        button.addEventListener("click", () => {
+                            const pdfId = button.getAttribute("data-pdf-id");
+                            alert(`Funcionalidade de assinatura para o PDF ${pdfId} ainda será implementada.`);
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar PDFs:", error);
+                    document.getElementById("pdf-list").innerHTML = "<p>Erro ao carregar seus PDFs.</p>";
+                });
+        });
+
+        // Logout button functionality
+        document.getElementById("logout").addEventListener("click", () => {
+            localStorage.removeItem("userEmail");
+            window.location.href = "/";
+        });
+    </script>
+</body>
+
+</html>

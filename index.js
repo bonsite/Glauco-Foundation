@@ -271,6 +271,30 @@ function wrapText(text, maxLineWidth, font, fontSize, pdfDoc) {
     return lines;
 }
 
+// Serve static files from the 'pedidos' directory
+app.use('/pedidos', express.static(path.join(__dirname, 'pedidos')));
+
+// Route to get PDFs for the logged-in user
+app.get('/get-user-pdfs', async (req, res) => {
+    const { email } = req.query;
+
+    if (!email) {
+        return res.status(400).json({ error: "Email não fornecido." });
+    }
+
+    try {
+        const result = await pool.query(
+            'SELECT pdf_id FROM pedidos WHERE user_email = $1',
+            [email]
+        );
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Erro ao buscar PDFs:', error);
+        res.status(500).json({ error: "Erro ao buscar PDFs." });
+    }
+});
+
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
