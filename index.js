@@ -370,6 +370,7 @@ app.post('/verify-signature', async (req, res) => {
         }
 
         const { signature } = pdfQuery.rows[0];
+        console.log("Retrieved signature from DB:", signature); // Log signature for debugging
 
         // Load the existing PDF from the filesystem
         const filePath = path.join(__dirname, 'pedidos', `${pdfId}.pdf`);
@@ -381,6 +382,7 @@ app.post('/verify-signature', async (req, res) => {
 
         // Recreate the hash
         const pdfHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
+        console.log("Recreated PDF hash:", pdfHash); // Log recreated PDF hash for debugging
 
         // Verify the signature
         const verify = crypto.createVerify('SHA256');
@@ -397,6 +399,8 @@ app.post('/verify-signature', async (req, res) => {
         res.status(500).json({ error: "Erro ao verificar a assinatura." });
     }
 });
+
+
 
 
   
