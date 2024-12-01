@@ -89,3 +89,54 @@ a {
 a:hover {
     color: #0056b3; /* Darker shade on hover */
 }
+/* Updated styling for PDF items */
+.pdf-item {
+    border: 2px solid #007acc; /* Blue border for each item */
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px; /* Space between items */
+    background-color: #f9f9f9; /* Light background for items */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pdf-text {
+    color: #007acc; /* Blue color for PDF ID text */
+    font-size: 16px;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.pdf-actions {
+    display: flex;
+    gap: 10px; /* Space between buttons */
+}
+
+.pdf-actions button {
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.pdf-actions .view-btn {
+    background-color: #e6f7ff; /* Light blue background for "View" button */
+    color: #007acc;
+}
+
+.pdf-actions .view-btn:hover {
+    background-color: #cceeff; /* Darker shade on hover */
+}
+
+.pdf-actions .sign-btn {
+    background-color: #007acc; /* Blue for "Sign" button */
+    color: white;
+}
+
+.pdf-actions .sign-btn:hover {
+    background-color: #005a99; /* Darker shade for hover */
+}
+

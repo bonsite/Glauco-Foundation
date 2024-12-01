@@ -40,24 +40,37 @@
                     }
 
                     data.forEach(pdf => {
-                        const pdfDiv = document.createElement("div");
-                        pdfDiv.classList.add("pdf-item");
+    const pdfDiv = document.createElement("div");
+    pdfDiv.classList.add("pdf-item");
 
-                        const pdfLink = document.createElement("a");
-                        pdfLink.href = `/pedidos/${pdf.pdf_id}.pdf`;
-                        pdfLink.target = "_blank";
-                        pdfLink.textContent = `PDF ID: ${pdf.pdf_id}`;
+    const pdfText = document.createElement("span");
+    pdfText.classList.add("pdf-text");
+    pdfText.textContent = `PDF ID: ${pdf.pdf_id}`;
 
-                        const signButton = document.createElement("button");
-                        signButton.textContent = "Assinar";
-                        signButton.addEventListener("click", () => {
-                            signPdf(pdf.pdf_id);
-                        });
+    const actionsDiv = document.createElement("div");
+    actionsDiv.classList.add("pdf-actions");
 
-                        pdfDiv.appendChild(pdfLink);
-                        pdfDiv.appendChild(signButton);
-                        pdfListDiv.appendChild(pdfDiv);
-                    });
+    const viewButton = document.createElement("button");
+    viewButton.classList.add("view-btn");
+    viewButton.textContent = "Ver PDF";
+    viewButton.addEventListener("click", () => {
+        window.open(`/pedidos/${pdf.pdf_id}.pdf`, "_blank");
+    });
+
+    const signButton = document.createElement("button");
+    signButton.classList.add("sign-btn");
+    signButton.textContent = "Assinar PDF";
+    signButton.addEventListener("click", () => {
+        signPdf(pdf.pdf_id);
+    });
+
+    actionsDiv.appendChild(viewButton);
+    actionsDiv.appendChild(signButton);
+    pdfDiv.appendChild(pdfText);
+    pdfDiv.appendChild(actionsDiv);
+    pdfListDiv.appendChild(pdfDiv);
+});
+
                 })
                 .catch(error => {
                     console.error("Erro ao buscar PDFs:", error);
@@ -95,6 +108,7 @@
                     alert("Erro ao gerar a assinatura. Tente novamente.");
                 });
         }
+
 
         function signPdf(pdfId) {
     const userEmail = localStorage.getItem("userEmail");
