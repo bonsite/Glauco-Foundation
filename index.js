@@ -9,6 +9,15 @@ const session = require('express-session'); // Session middleware
 const bodyParser = require('body-parser'); // Added from your friend's code
 const cors = require('cors'); // Added from your friend's code
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib'); // Added from your friend's code
+const nodemailer = require('nodemailer');
+
+let transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: 'glaucofoundation10@gmail.com',
+      pass: process.env.EMAIL_PASSWORD
+    }
+  });
 
 
 const crypto = require('crypto');
@@ -346,6 +355,31 @@ app.post('/sign-pdf', async (req, res) => {
             `UPDATE pedidos SET signature = $1 WHERE pdf_id = $2`,
             [signature, pdfId]
         );
+
+        let userEmail = req.session.user.email;
+
+        let emailtext = `
+        <h1>Novo pedido assinado por usuario.</h1>
+        <p>PDF ID: ${pdfId}</p>
+        <p>E-mail: ${userEmail}</p>
+        <p>Assinatura: ${signature}</p>
+        <p>Data: ${new Date().toISOString()}</p>
+        `
+
+        let mailOptions = {
+            from: 'glaucofoundation10@gmail.com',
+            to: userEmail,
+            subject: 'Novo pedido assinado por usuario.',
+            text: emailtext
+          };
+
+          transporter.sendMail(mailOptions, function(error, info){
+            if (error) {
+              console.log(error);
+            } else {
+              console.log('Email sent: ' + info.response);
+            }
+          });
 
         res.status(200).json({ message: 'PDF assinado com sucesso', pdfId, signature });
     } catch (error) {
