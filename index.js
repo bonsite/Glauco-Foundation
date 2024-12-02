@@ -35,6 +35,8 @@ const pool = new Pool({
     }
 });
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Middleware to parse form data
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'pages')));
